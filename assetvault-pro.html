@@ -1,0 +1,22 @@
+// ============================================================
+// InsightCard Component
+// AI-generated insight card for dashboard and AI Insights page
+// ============================================================
+
+export function renderInsightCard({ icon, type, heading, body }) {
+  return `
+    <div class="insight-card insight-${type}">
+      <div class="insight-icon">${icon}</div>
+      <div class="insight-body">
+        <div class="insight-heading">${heading}</div>
+        <div class="insight-text">${body}</div>
+      </div>
+    </div>`;
+}
+
+export function renderInsightGrid(insights, columns = 3) {
+  return `
+    <div style="display:grid;grid-template-columns:repeat(${columns},1fr);gap:12px">
+      ${insights.map(renderInsightCard).join('')}
+    </div>`;
+}

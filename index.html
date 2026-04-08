@@ -1,0 +1,33 @@
+// ============================================================
+// Sidebar Component
+// Usage: renders the left navigation sidebar
+// ============================================================
+
+export function renderSidebar(activeTab, onNavigate) {
+  const navItems = [
+    { id: 'dashboard',   icon: '⊞',  label: 'Dashboard',    section: 'Overview'    },
+    { id: 'assets',      icon: '📦', label: 'Assets',        section: 'Management', badge: 3 },
+    { id: 'checkout',    icon: '👤', label: 'Check-in/Out',  section: null          },
+    { id: 'maintenance', icon: '🔧', label: 'Maintenance',   section: null          },
+    { id: 'reports',     icon: '📊', label: 'Reports',       section: 'Insights'    },
+    { id: 'ai',          icon: '🤖', label: 'AI Insights',   section: null          },
+  ];
+
+  // Group by section
+  const sections = [];
+  navItems.forEach(item => {
+    if (item.section) sections.push({ type: 'section', label: item.section });
+    sections.push({ type: 'item', ...item });
+  });
+
+  return sections.map(s => {
+    if (s.type === 'section') return `<div class="nav-section">${s.label}</div>`;
+    return `
+      <div class="nav-item ${s.id === activeTab ? 'active' : ''}"
+           onclick="${onNavigate}('${s.id}')">
+        <span class="nav-icon">${s.icon}</span>
+        <span>${s.label}</span>
+        ${s.badge ? `<span class="nav-badge">${s.badge}</span>` : ''}
+      </div>`;
+  }).join('');
+}
