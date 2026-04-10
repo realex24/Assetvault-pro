@@ -286,6 +286,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
       <div class="topbar">
         <div class="topbar-title">Dashboard</div>
         <div class="search-box"><span>🔍</span><input placeholder="Search assets…" oninput="globalSearch(this.value)"></div>
+        <button class="tbtn" onclick="openModal('scanBarcode')">📷 Scan</button>
         <button class="tbtn notif-rel" onclick="openModal('alerts')">🔔<span class="notif-dot" id="alertDot"></span></button>
         <button class="tbtn primary" onclick="openModal('addAsset')">+ Add Asset</button>
       </div>
@@ -741,6 +742,329 @@ function toast(msg,type='info'){
 
 // ── BOOT ──────────────────────────────────────────
 initDB();
+
+// ── BARCODE & CAMERA ──────────────────────────────
+let camStream = null;
+let scanInterval = null;
+let photoAssetId = null;
+
+// ── Open scan modal ────────────────────────────────
+function openScanModal() { openModal('scanBarcode'); }
+
+// ── Stop all camera streams safely ────────────────
+function stopCamera() {
+  if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+  if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+}
+
+// ── Launch camera into a <video> element ──────────
+async function startCamera(videoId, facingMode = 'environment') {
+  stopCamera();
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    const video = document.getElementById(videoId);
+    if (video) { video.srcObject = camStream; await video.play(); }
+    return true;
+  } catch (e) {
+    toast('Camera access denied. Please allow camera permissions.', 'error');
+    return false;
+  }
+}
+
+// ── Capture a still frame from video ──────────────
+function captureFrame(videoId, canvasId) {
+  const video = document.getElementById(videoId);
+  const canvas = document.getElementById(canvasId);
+  if (!video || !canvas) return null;
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  return canvas.toDataURL('image/jpeg', 0.85);
+}
+
+// ── Save photo to asset record ─────────────────────
+function savePhotoToAsset(assetId, dataUrl) {
+  const assets = getAssets();
+  const a = assets.find(x => x.id === assetId);
+  if (!a) return;
+  a.photo = dataUrl;
+  saveAssets(assets);
+  addActivity('create', '📸', `<b>Photo added</b> to ${a.name} (${assetId})`);
+}
+
+// ── BarcodeDetector (native API) ──────────────────
+async function detectBarcode(videoEl) {
+  if (!('BarcodeDetector' in window)) return null;
+  try {
+    const detector = new BarcodeDetector({ formats: ['qr_code','code_128','code_39','ean_13','ean_8','upc_a','upc_e','data_matrix','aztec','pdf417'] });
+    const codes = await detector.detect(videoEl);
+    return codes.length ? codes[0].rawValue : null;
+  } catch (e) { return null; }
+}
+
+// ── Extend openModal to handle scan + photo ────────
+const _origOpenModal = openModal;
+openModal = function(type, id) {
+  const box = document.getElementById('modalBox');
+
+  if (type === 'scanBarcode') {
+    stopCamera();
+    box.innerHTML = `
+      <button class="modal-close" onclick="stopCamera();closeModal()">✕</button>
+      <div class="modal-title">📷 Scan Barcode / QR Code</div>
+      <div class="modal-sub">Point your camera at any barcode or QR code on your asset.</div>
+
+      <div id="scanStatus" style="background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--accent);display:flex;align-items:center;gap:8px;">
+        <span id="scanDot" style="width:8px;height:8px;background:var(--accent);border-radius:50%;animation:pulse 1.5s infinite;flex-shrink:0"></span>
+        <span id="scanMsg">Starting camera…</span>
+      </div>
+
+      <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3;margin-bottom:16px;">
+        <video id="scanVideo" style="width:100%;height:100%;object-fit:cover;" playsinline muted></video>
+        <canvas id="scanCanvas" style="display:none"></canvas>
+        <!-- Scan overlay -->
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+          <div style="width:65%;aspect-ratio:1;border:2px solid var(--accent);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.45);position:relative;">
+            <div style="position:absolute;top:-2px;left:-2px;width:20px;height:20px;border-top:3px solid var(--accent);border-left:3px solid var(--accent);border-radius:4px 0 0 0"></div>
+            <div style="position:absolute;top:-2px;right:-2px;width:20px;height:20px;border-top:3px solid var(--accent);border-right:3px solid var(--accent);border-radius:0 4px 0 0"></div>
+            <div style="position:absolute;bottom:-2px;left:-2px;width:20px;height:20px;border-bottom:3px solid var(--accent);border-left:3px solid var(--accent);border-radius:0 0 0 4px"></div>
+            <div style="position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;border-bottom:3px solid var(--accent);border-right:3px solid var(--accent);border-radius:0 0 4px 0"></div>
+            <div id="scanLine" style="position:absolute;left:4px;right:4px;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);top:0;animation:scanLine 2s ease-in-out infinite;"></div>
+          </div>
+        </div>
+      </div>
+
+      <style>
+        @keyframes scanLine{0%{top:5%}50%{top:90%}100%{top:5%}}
+      </style>
+
+      <div style="display:flex;gap:10px;margin-bottom:14px;">
+        <button class="tbtn" style="flex:1" onclick="switchCamera()" id="switchCamBtn">🔄 Switch Camera</button>
+        <button class="tbtn" style="flex:1" onclick="manualBarcodeEntry()">⌨️ Enter Manually</button>
+      </div>
+
+      <div id="scanResult" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px;">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Detected</div>
+        <div id="scanResultText" style="font-size:14px;font-weight:500;margin-bottom:12px"></div>
+        <div id="scanResultAsset" style="margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-submit" id="scanActionBtn" style="margin-top:0"></button>
+          <button class="tbtn" onclick="resetScan()">Scan Again</button>
+        </div>
+      </div>`;
+
+    document.getElementById('modalOverlay').classList.add('open');
+    initScanner();
+    return;
+  }
+
+  if (type === 'takePhoto') {
+    photoAssetId = id;
+    stopCamera();
+    const assets = getAssets();
+    const asset = assets.find(a => a.id === id);
+    box.innerHTML = `
+      <button class="modal-close" onclick="stopCamera();closeModal()">✕</button>
+      <div class="modal-title">📸 Take Asset Photo</div>
+      <div class="modal-sub">${asset ? asset.name + ' · ' + id : id}</div>
+
+      <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3;margin-bottom:14px;" id="photoPreviewWrap">
+        <video id="photoVideo" style="width:100%;height:100%;object-fit:cover;" playsinline muted></video>
+        <canvas id="photoCanvas" style="display:none;width:100%;height:100%;object-fit:cover;"></canvas>
+        <img id="photoCaptured" style="display:none;width:100%;height:100%;object-fit:cover;border-radius:12px;" />
+      </div>
+
+      <div id="photoControls" style="display:flex;gap:10px;margin-bottom:4px;">
+        <button class="tbtn" onclick="switchPhotoCamera()">🔄 Flip Camera</button>
+        <button class="btn-submit" style="flex:1;margin-top:0" onclick="capturePhoto()">📸 Capture Photo</button>
+      </div>
+      <div id="photoSaveControls" style="display:none;gap:10px;margin-bottom:4px;">
+        <button class="tbtn" style="flex:1" onclick="retakePhoto()">🔄 Retake</button>
+        <button class="btn-submit" style="flex:1;margin-top:0;background:var(--accent3)" onclick="confirmSavePhoto()">✅ Save Photo</button>
+      </div>`;
+
+    document.getElementById('modalOverlay').classList.add('open');
+    startCamera('photoVideo', 'environment');
+    return;
+  }
+
+  // for editAsset — inject photo button
+  _origOpenModal(type, id);
+
+  // After original modal renders, inject photo button if editing an asset
+  if (type === 'editAsset' || type === 'viewAsset') {
+    const assets = getAssets();
+    const asset = assets.find(a => a.id === id);
+    if (!asset) return;
+    // Inject photo section
+    const notesGroup = box.querySelector('#f-notes')?.closest('.form-group');
+    if (notesGroup) {
+      const photoDiv = document.createElement('div');
+      photoDiv.className = 'form-group';
+      photoDiv.innerHTML = `
+        <label class="form-label">Asset Photo</label>
+        <div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+          ${asset.photo ? `<img src="${asset.photo}" style="width:100px;height:75px;object-fit:cover;border-radius:8px;border:1px solid var(--border);" id="assetPhotoThumb">` : `<div style="width:100px;height:75px;background:var(--surface2);border:1px dashed var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;" id="assetPhotoThumb">📷</div>`}
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="tbtn" onclick="stopCamera();closeModal();setTimeout(()=>openModal('takePhoto','${id}'),100)">📸 ${asset.photo ? 'Retake Photo' : 'Take Photo'}</button>
+            ${asset.photo ? `<button class="btn-danger-sm" onclick="removeAssetPhoto('${id}')">🗑️ Remove</button>` : ''}
+          </div>
+        </div>`;
+      notesGroup.parentNode.insertBefore(photoDiv, notesGroup);
+    }
+  }
+};
+
+// ── Scanner logic ──────────────────────────────────
+let currentFacing = 'environment';
+
+async function initScanner() {
+  const ok = await startCamera('scanVideo', currentFacing);
+  if (!ok) {
+    document.getElementById('scanMsg').textContent = 'Camera unavailable. Enter barcode manually.';
+    return;
+  }
+  document.getElementById('scanMsg').textContent = 'Scanning… hold steady';
+  const video = document.getElementById('scanVideo');
+  scanInterval = setInterval(async () => {
+    if (!video || !camStream) return;
+    const code = await detectBarcode(video);
+    if (code) handleScanResult(code);
+  }, 600);
+}
+
+function handleScanResult(code) {
+  clearInterval(scanInterval);
+  scanInterval = null;
+  document.getElementById('scanMsg').textContent = '✅ Barcode detected!';
+  document.getElementById('scanDot').style.background = 'var(--accent3)';
+  document.getElementById('scanResult').style.display = 'block';
+  document.getElementById('scanResultText').textContent = code;
+  // Try to match to an asset
+  const assets = getAssets();
+  const asset = assets.find(a => a.id === code || a.id === code.toUpperCase());
+  const resultEl = document.getElementById('scanResultAsset');
+  const actionBtn = document.getElementById('scanActionBtn');
+  if (asset) {
+    resultEl.innerHTML = `<div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:10px 12px"><div style="font-weight:500;margin-bottom:2px">${asset.name}</div><div style="font-size:12px;color:var(--muted)">${asset.id} · ${asset.location} · ${asset.status}</div></div>`;
+    actionBtn.textContent = 'View Asset →';
+    actionBtn.onclick = () => { stopCamera(); closeModal(); setTimeout(() => openModal('viewAsset', asset.id), 100); };
+  } else {
+    resultEl.innerHTML = `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--warn)">No matching asset found for this barcode. Create a new asset with this tag?</div>`;
+    actionBtn.textContent = '+ Add New Asset with this Tag';
+    actionBtn.onclick = () => { stopCamera(); closeModal(); setTimeout(() => { openModal('addAsset'); setTimeout(() => { const nameEl = document.getElementById('f-name'); if (nameEl) nameEl.value = code; }, 100); }, 100); };
+  }
+  toast('Barcode scanned: ' + code, 'success');
+}
+
+function resetScan() {
+  document.getElementById('scanResult').style.display = 'none';
+  document.getElementById('scanMsg').textContent = 'Scanning… hold steady';
+  document.getElementById('scanDot').style.background = 'var(--accent)';
+  const video = document.getElementById('scanVideo');
+  if (video && camStream) {
+    scanInterval = setInterval(async () => {
+      const code = await detectBarcode(video);
+      if (code) handleScanResult(code);
+    }, 600);
+  }
+}
+
+function switchCamera() {
+  currentFacing = currentFacing === 'environment' ? 'user' : 'environment';
+  startCamera('scanVideo', currentFacing);
+}
+
+function switchPhotoCamera() {
+  currentFacing = currentFacing === 'environment' ? 'user' : 'environment';
+  startCamera('photoVideo', currentFacing);
+}
+
+function manualBarcodeEntry() {
+  stopCamera();
+  const code = prompt('Enter barcode or asset tag ID (e.g. AV-001):');
+  if (code && code.trim()) handleScanResult(code.trim().toUpperCase());
+}
+
+// ── Photo capture ──────────────────────────────────
+function capturePhoto() {
+  const dataUrl = captureFrame('photoVideo', 'photoCanvas');
+  if (!dataUrl) { toast('Could not capture photo', 'error'); return; }
+  stopCamera();
+  document.getElementById('photoVideo').style.display = 'none';
+  const img = document.getElementById('photoCaptured');
+  img.src = dataUrl;
+  img.style.display = 'block';
+  document.getElementById('photoControls').style.display = 'none';
+  const saveCtrl = document.getElementById('photoSaveControls');
+  saveCtrl.style.display = 'flex';
+  // Store temporarily
+  window._pendingPhoto = dataUrl;
+}
+
+function retakePhoto() {
+  window._pendingPhoto = null;
+  document.getElementById('photoCaptured').style.display = 'none';
+  document.getElementById('photoVideo').style.display = 'block';
+  document.getElementById('photoSaveControls').style.display = 'none';
+  document.getElementById('photoControls').style.display = 'flex';
+  startCamera('photoVideo', currentFacing);
+}
+
+function confirmSavePhoto() {
+  if (!window._pendingPhoto || !photoAssetId) return;
+  savePhotoToAsset(photoAssetId, window._pendingPhoto);
+  window._pendingPhoto = null;
+  stopCamera();
+  closeModal();
+  toast('Photo saved to asset!', 'success');
+  // Re-render to show photo
+  renderAssets();
+  renderDashboard();
+}
+
+function removeAssetPhoto(id) {
+  const assets = getAssets();
+  const a = assets.find(x => x.id === id);
+  if (a) { delete a.photo; saveAssets(assets); }
+  closeModal();
+  toast('Photo removed', 'info');
+  renderAssets();
+}
+
+// ── Add photo col to asset table ───────────────────
+const _origRenderAssets = renderAssets;
+renderAssets = function() {
+  let assets = getAssets();
+  if (aFilter) assets = assets.filter(a => a.name.toLowerCase().includes(aFilter) || a.id.toLowerCase().includes(aFilter) || a.category.toLowerCase().includes(aFilter));
+  if (sFilter) assets = assets.filter(a => a.status === sFilter);
+  document.getElementById('assetRows').innerHTML = assets.map(a => `
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:10px">
+          ${a.photo ? `<img src="${a.photo}" style="width:38px;height:30px;object-fit:cover;border-radius:5px;border:1px solid var(--border);flex-shrink:0">` : `<div style="width:38px;height:30px;background:var(--surface2);border:1px dashed var(--border);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;cursor:pointer" onclick="openModal('takePhoto','${a.id}')" title="Add photo">📷</div>`}
+          <div><div class="aname">${a.name}</div><div class="atag">${a.id}</div></div>
+        </div>
+      </td>
+      <td style="font-size:12px;color:var(--muted)">${a.category}</td>
+      <td style="font-size:13px">${a.assignedTo || '—'}</td>
+      <td style="font-size:12px;color:var(--muted)">${a.location}</td>
+      <td>${pill(a.status)}</td>
+      <td style="font-size:12px">$${(a.value || 0).toLocaleString()}</td>
+      <td style="display:flex;gap:5px;flex-wrap:wrap">
+        <button class="btn-sm" onclick="openModal('editAsset','${a.id}')">Edit</button>
+        <button class="btn-sm" onclick="openModal('takePhoto','${a.id}')" title="Take photo">📸</button>
+        <button class="btn-danger-sm" onclick="delAsset('${a.id}')">Delete</button>
+      </td>
+    </tr>`).join('') || '<tr><td colspan="7" class="empty-state">No assets found. Add your first asset!</td></tr>';
+};
+
+// Patch closeModal to always stop camera
+const _origClose = closeModal;
+closeModal = function() { stopCamera(); _origClose(); };
 </script>
 </body>
 </html>
