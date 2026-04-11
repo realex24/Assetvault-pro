@@ -813,55 +813,105 @@ openModal = function(type, id) {
   if (type === 'scanBarcode') {
     stopCamera();
     box.innerHTML = `
-      <button class="modal-close" onclick="stopCamera();closeModal()">✕</button>
-      <div class="modal-title">📷 Scan Barcode / QR Code</div>
-      <div class="modal-sub">Point your camera at any barcode or QR code on your asset.</div>
-
-      <div id="scanStatus" style="background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--accent);display:flex;align-items:center;gap:8px;">
-        <span id="scanDot" style="width:8px;height:8px;background:var(--accent);border-radius:50%;animation:pulse 1.5s infinite;flex-shrink:0"></span>
-        <span id="scanMsg">Starting camera…</span>
-      </div>
-
-      <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:4/3;margin-bottom:16px;">
-        <video id="scanVideo" style="width:100%;height:100%;object-fit:cover;" playsinline muted></video>
-        <canvas id="scanCanvas" style="display:none"></canvas>
-        <!-- Scan overlay -->
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
-          <div style="width:65%;aspect-ratio:1;border:2px solid var(--accent);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.45);position:relative;">
-            <div style="position:absolute;top:-2px;left:-2px;width:20px;height:20px;border-top:3px solid var(--accent);border-left:3px solid var(--accent);border-radius:4px 0 0 0"></div>
-            <div style="position:absolute;top:-2px;right:-2px;width:20px;height:20px;border-top:3px solid var(--accent);border-right:3px solid var(--accent);border-radius:0 4px 0 0"></div>
-            <div style="position:absolute;bottom:-2px;left:-2px;width:20px;height:20px;border-bottom:3px solid var(--accent);border-left:3px solid var(--accent);border-radius:0 0 0 4px"></div>
-            <div style="position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;border-bottom:3px solid var(--accent);border-right:3px solid var(--accent);border-radius:0 0 4px 0"></div>
-            <div id="scanLine" style="position:absolute;left:4px;right:4px;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);top:0;animation:scanLine 2s ease-in-out infinite;"></div>
-          </div>
-        </div>
-      </div>
-
       <style>
         @keyframes scanLine{0%{top:5%}50%{top:90%}100%{top:5%}}
+        @keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+        .scan-mode-btn{flex:1;padding:8px 6px;border-radius:8px;border:none;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer;transition:all .2s;background:transparent;color:var(--muted);}
+        .scan-mode-btn.active{background:var(--accent);color:#080c14;}
+        .audit-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);animation:slideUp .25s ease;}
+        .audit-item:last-child{border-bottom:none;}
+        .qab{padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:12px;font-family:inherit;cursor:pointer;transition:all .2s;flex:1;text-align:center;}
+        .qab:hover{border-color:var(--accent);color:var(--accent);}
+        .qab.p{background:var(--accent);color:#080c14;border-color:var(--accent);font-family:'Syne',sans-serif;font-weight:700;}
       </style>
 
-      <div style="display:flex;gap:10px;margin-bottom:14px;">
-        <button class="tbtn" style="flex:1" onclick="switchCamera()" id="switchCamBtn">🔄 Switch Camera</button>
-        <button class="tbtn" style="flex:1" onclick="manualBarcodeEntry()">⌨️ Enter Manually</button>
+      <button class="modal-close" onclick="stopCamera();closeModal()">&#x2715;</button>
+      <div class="modal-title">&#x1F4F7; Barcode Scanner</div>
+
+      <div style="display:flex;background:var(--surface2);border-radius:10px;padding:4px;gap:3px;margin-bottom:12px;">
+        <button class="scan-mode-btn active" id="modeQuick" onclick="setScanMode('quick')">&#x26A1; Quick Scan</button>
+        <button class="scan-mode-btn" id="modeAudit" onclick="setScanMode('audit')">&#x1F4CB; Audit Mode</button>
+        <button class="scan-mode-btn" id="modeUpdate" onclick="setScanMode('update')">&#x270F;&#xFE0F; Update Asset</button>
       </div>
 
-      <div id="scanResult" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:4px;">
-        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Detected</div>
-        <div id="scanResultText" style="font-size:14px;font-weight:500;margin-bottom:12px"></div>
+      <div id="scanStatus" style="background:rgba(0,229,255,0.08);border:1px solid rgba(0,229,255,0.2);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--accent);display:flex;align-items:center;gap:8px;">
+        <span id="scanDot" style="width:8px;height:8px;background:var(--accent);border-radius:50%;animation:pulse 1.5s infinite;flex-shrink:0"></span>
+        <span id="scanMsg">Starting camera&hellip;</span>
+        <span id="scanCount" style="margin-left:auto;font-size:11px;color:var(--muted);display:none"></span>
+      </div>
+
+      <div style="position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:4/3;margin-bottom:12px;">
+        <video id="scanVideo" style="width:100%;height:100%;object-fit:cover;" playsinline muted></video>
+        <canvas id="scanCanvas" style="display:none"></canvas>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
+          <div id="scanFrame" style="width:62%;aspect-ratio:1;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5);position:relative;">
+            <div style="position:absolute;top:-2px;left:-2px;width:22px;height:22px;border-top:3px solid var(--accent);border-left:3px solid var(--accent);border-radius:5px 0 0 0"></div>
+            <div style="position:absolute;top:-2px;right:-2px;width:22px;height:22px;border-top:3px solid var(--accent);border-right:3px solid var(--accent);border-radius:0 5px 0 0"></div>
+            <div style="position:absolute;bottom:-2px;left:-2px;width:22px;height:22px;border-bottom:3px solid var(--accent);border-left:3px solid var(--accent);border-radius:0 0 0 5px"></div>
+            <div style="position:absolute;bottom:-2px;right:-2px;width:22px;height:22px;border-bottom:3px solid var(--accent);border-right:3px solid var(--accent);border-radius:0 0 5px 0"></div>
+            <div id="scanLine" style="position:absolute;left:6px;right:6px;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent);animation:scanLine 1.8s ease-in-out infinite;"></div>
+          </div>
+        </div>
+        <div id="scanFlash" style="position:absolute;inset:0;background:rgba(16,185,129,0.3);display:none;border-radius:14px;pointer-events:none;"></div>
+        <div style="position:absolute;top:10px;right:10px;display:flex;flex-direction:column;gap:6px;">
+          <button onclick="switchCamera()" style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#x1F504;</button>
+          <button onclick="toggleTorch()" id="torchBtn" style="width:36px;height:36px;border-radius:50%;background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;">&#x1F526;</button>
+        </div>
+        <div id="auditBadge" style="position:absolute;top:10px;left:10px;background:var(--accent);color:#080c14;font-family:'Syne',sans-serif;font-weight:800;font-size:13px;padding:4px 10px;border-radius:20px;display:none;">0 scanned</div>
+      </div>
+
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button class="qab" onclick="manualBarcodeEntry()">&#x2328;&#xFE0F; Manual Entry</button>
+        <button class="qab p" onclick="triggerManualCapture()">&#x1F4F8; Capture</button>
+      </div>
+
+      <div id="scanResult" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;animation:slideUp .3s ease;">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px">&#x1F4CC; Scanned Code</div>
+        <div id="scanResultText" style="font-family:monospace;font-size:15px;font-weight:600;margin-bottom:12px;color:var(--accent)"></div>
         <div id="scanResultAsset" style="margin-bottom:12px"></div>
-        <div style="display:flex;gap:8px">
-          <button class="btn-submit" id="scanActionBtn" style="margin-top:0"></button>
-          <button class="tbtn" onclick="resetScan()">Scan Again</button>
+        <div id="scanQuickActions" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;margin-top:4px"><button class="qab" onclick="resetScan()">&#x1F504; Scan Again</button></div>
+      </div>
+
+      <div id="auditPanel" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-family:'Syne',sans-serif;font-size:13px;font-weight:700;">Audit Log</div>
+          <div style="display:flex;gap:8px;">
+            <button class="qab" style="padding:5px 10px;font-size:11px;flex:unset" onclick="clearAuditLog()">Clear</button>
+            <button class="qab p" style="padding:5px 10px;font-size:11px;flex:unset" onclick="exportAuditLog()">Export CSV</button>
+          </div>
+        </div>
+        <div id="auditSummary" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;text-align:center;">
+          <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);border-radius:8px;padding:8px;"><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--accent3)" id="auditFound">0</div><div style="font-size:10px;color:var(--muted)">Found</div></div>
+          <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:8px;padding:8px;"><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--danger)" id="auditMissing">0</div><div style="font-size:10px;color:var(--muted)">Missing</div></div>
+          <div style="background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.2);border-radius:8px;padding:8px;"><div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--accent)" id="auditUnknown">0</div><div style="font-size:10px;color:var(--muted)">Unknown</div></div>
+        </div>
+        <div id="auditList" style="max-height:180px;overflow-y:auto;padding-right:4px;"></div>
+      </div>
+
+      <div id="updatePanel" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;animation:slideUp .3s ease;">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:10px">&#x270F;&#xFE0F; Update Asset In Field</div>
+        <div id="updateAssetInfo" style="margin-bottom:14px;"></div>
+        <div class="form-group"><label class="form-label">Status</label>
+          <select class="form-input" id="updateStatus"><option value="available">Available</option><option value="out">Checked Out</option><option value="maintenance">In Maintenance</option><option value="retired">Retired</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Location</label><input class="form-input" id="updateLocation" placeholder="Update location&hellip;"></div>
+        <div class="form-group"><label class="form-label">Field Notes</label><textarea class="form-input" id="updateNotes" style="resize:none;height:52px" placeholder="Condition, observations&hellip;"></textarea></div>
+        <div style="display:flex;gap:8px;">
+          <button class="qab" onclick="resetScan()">&#x1F504; Scan Next</button>
+          <button class="qab p" onclick="saveFieldUpdate()">&#x2705; Save Update</button>
         </div>
       </div>`;
 
     document.getElementById('modalOverlay').classList.add('open');
+    window._scanMode = 'quick';
+    window._auditLog = [];
+    window._updateAssetId = null;
     initScanner();
     return;
   }
 
-  if (type === 'takePhoto') {
+    if (type === 'takePhoto') {
     photoAssetId = id;
     stopCamera();
     const assets = getAssets();
@@ -961,60 +1011,280 @@ openModal = function(type, id) {
 // ── Scanner logic ──────────────────────────────────
 let currentFacing = 'environment';
 
+// ── Scan mode switcher ─────────────────────────────
+function setScanMode(mode) {
+  window._scanMode = mode;
+  ['quick','audit','update'].forEach(m => {
+    const btn = document.getElementById('mode' + m.charAt(0).toUpperCase() + m.slice(1));
+    if (btn) { btn.classList.toggle('active', m === mode); }
+  });
+  // Hide all panels
+  const sr = document.getElementById('scanResult');
+  const ap = document.getElementById('auditPanel');
+  const up = document.getElementById('updatePanel');
+  const ab = document.getElementById('auditBadge');
+  if (sr) sr.style.display = 'none';
+  if (up) up.style.display = 'none';
+  if (mode === 'audit') {
+    if (ap) ap.style.display = 'block';
+    if (ab) ab.style.display = 'block';
+    const sc = document.getElementById('scanCount');
+    if (sc) sc.style.display = 'block';
+    setScanMsg('Audit mode — scan each asset to verify', 'var(--accent)');
+  } else {
+    if (ap) ap.style.display = 'none';
+    if (ab) ab.style.display = 'none';
+    setScanMsg(mode === 'update' ? 'Update mode — scan an asset to edit it' : 'Quick scan — point at any barcode', 'var(--accent)');
+  }
+  resetScan();
+}
+
+function setScanMsg(msg, color) {
+  const el = document.getElementById('scanMsg');
+  const dot = document.getElementById('scanDot');
+  if (el) el.textContent = msg;
+  if (dot && color) dot.style.background = color;
+}
+
+// ── Flashlight (torch) toggle ──────────────────────
+let torchOn = false;
+async function toggleTorch() {
+  if (!camStream) return;
+  const track = camStream.getVideoTracks()[0];
+  if (!track) return;
+  try {
+    torchOn = !torchOn;
+    await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+    const btn = document.getElementById('torchBtn');
+    if (btn) btn.style.background = torchOn ? 'rgba(255,220,0,.7)' : 'rgba(0,0,0,.65)';
+  } catch(e) { toast('Flashlight not available on this device', 'error'); torchOn = false; }
+}
+
+// ── Manual capture (for devices where auto-detect is slow) ─
+async function triggerManualCapture() {
+  const video = document.getElementById('scanVideo');
+  if (!video || !camStream) { manualBarcodeEntry(); return; }
+  const code = await detectBarcode(video);
+  if (code) { handleScanResult(code); }
+  else { toast('No barcode detected. Try holding steadier or use Manual Entry.', 'error'); }
+}
+
 async function initScanner() {
   const ok = await startCamera('scanVideo', currentFacing);
   if (!ok) {
-    document.getElementById('scanMsg').textContent = 'Camera unavailable. Enter barcode manually.';
+    setScanMsg('Camera unavailable — use Manual Entry below', 'var(--danger)');
     return;
   }
-  document.getElementById('scanMsg').textContent = 'Scanning… hold steady';
+  setScanMsg('Scanning… point at a barcode', 'var(--accent)');
   const video = document.getElementById('scanVideo');
-  scanInterval = setInterval(async () => {
-    if (!video || !camStream) return;
-    const code = await detectBarcode(video);
-    if (code) handleScanResult(code);
-  }, 600);
+  // Use BarcodeDetector if available
+  if ('BarcodeDetector' in window) {
+    scanInterval = setInterval(async () => {
+      if (!video || !camStream) return;
+      const code = await detectBarcode(video);
+      if (code) handleScanResult(code);
+    }, 500);
+  } else {
+    setScanMsg('Auto-scan unavailable — tap Capture or use Manual Entry', 'var(--warn)');
+  }
 }
 
 function handleScanResult(code) {
-  clearInterval(scanInterval);
-  scanInterval = null;
-  document.getElementById('scanMsg').textContent = '✅ Barcode detected!';
-  document.getElementById('scanDot').style.background = 'var(--accent3)';
-  document.getElementById('scanResult').style.display = 'block';
-  document.getElementById('scanResultText').textContent = code;
-  // Try to match to an asset
+  // Flash effect
+  const flash = document.getElementById('scanFlash');
+  if (flash) { flash.style.display = 'block'; setTimeout(() => flash.style.display = 'none', 300); }
+  // Vibrate on mobile
+  if (navigator.vibrate) navigator.vibrate(80);
+
+  const mode = window._scanMode || 'quick';
+
+  if (mode === 'audit') {
+    handleAuditScan(code);
+    return;
+  }
+  if (mode === 'update') {
+    handleUpdateScan(code);
+    return;
+  }
+
+  // QUICK MODE
+  clearInterval(scanInterval); scanInterval = null;
+  setScanMsg('✅ Barcode detected!', 'var(--accent3)');
   const assets = getAssets();
   const asset = assets.find(a => a.id === code || a.id === code.toUpperCase());
   const resultEl = document.getElementById('scanResultAsset');
-  const actionBtn = document.getElementById('scanActionBtn');
+  const actionsEl = document.getElementById('scanQuickActions');
+  const scanResult = document.getElementById('scanResult');
+  const scanResultText = document.getElementById('scanResultText');
+  if (scanResult) scanResult.style.display = 'block';
+  if (scanResultText) scanResultText.textContent = code;
+
   if (asset) {
-    resultEl.innerHTML = `<div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:10px 12px"><div style="font-weight:500;margin-bottom:2px">${asset.name}</div><div style="font-size:12px;color:var(--muted)">${asset.id} · ${asset.location} · ${asset.status}</div></div>`;
-    actionBtn.textContent = 'View Asset →';
-    actionBtn.onclick = () => { stopCamera(); closeModal(); setTimeout(() => openModal('viewAsset', asset.id), 100); };
+    const statusColors = { available:'rgba(16,185,129,0.15)', out:'rgba(245,158,11,0.15)', maintenance:'rgba(124,58,237,0.15)', retired:'rgba(107,127,163,0.15)' };
+    if (resultEl) resultEl.innerHTML = `
+      <div style="background:${statusColors[asset.status]||'rgba(255,255,255,0.05)'};border:1px solid var(--border);border-radius:10px;padding:12px 14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <div style="font-weight:600;font-size:14px">${asset.name}</div>
+          <span class="pill ${asset.status}"><span class="dot"></span>${asset.status==='available'?'Available':asset.status==='out'?'Checked Out':asset.status==='maintenance'?'Maintenance':'Retired'}</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:12px;">
+          <span>🏷️ ${asset.id}</span>
+          <span>📍 ${asset.location}</span>
+          ${asset.assignedTo ? `<span>👤 ${asset.assignedTo}</span>` : ''}
+          <span>💰 $${(asset.value||0).toLocaleString()}</span>
+        </div>
+      </div>`;
+    if (actionsEl) actionsEl.innerHTML = `
+      <button class="qab p" onclick="stopCamera();closeModal();setTimeout(()=>openModal('viewAsset','${asset.id}'),100)">👁 View</button>
+      <button class="qab" onclick="stopCamera();closeModal();setTimeout(()=>openModal('editAsset','${asset.id}'),100)">✏️ Edit</button>
+      <button class="qab" onclick="stopCamera();closeModal();setTimeout(()=>{openModal('newCheckout','${asset.id}')},100)">🔄 Check Out</button>
+      <button class="qab" onclick="stopCamera();closeModal();setTimeout(()=>openModal('takePhoto','${asset.id}'),100)">📸 Photo</button>`;
+    addActivity('create', '📷', `<b>Scanned:</b> ${asset.name} (${asset.id})`);
+    toast('Asset found: ' + asset.name, 'success');
   } else {
-    resultEl.innerHTML = `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);border-radius:8px;padding:10px 12px;font-size:13px;color:var(--warn)">No matching asset found for this barcode. Create a new asset with this tag?</div>`;
-    actionBtn.textContent = '+ Add New Asset with this Tag';
-    actionBtn.onclick = () => { stopCamera(); closeModal(); setTimeout(() => { openModal('addAsset'); setTimeout(() => { const nameEl = document.getElementById('f-name'); if (nameEl) nameEl.value = code; }, 100); }, 100); };
+    if (resultEl) resultEl.innerHTML = `<div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.25);border-radius:10px;padding:12px 14px;color:var(--warn);font-size:13px;">⚠️ No asset found with ID <b>${code}</b>. Would you like to create one?</div>`;
+    if (actionsEl) actionsEl.innerHTML = `<button class="qab p" style="flex:unset;padding:8px 18px" onclick="stopCamera();closeModal();setTimeout(()=>{openModal('addAsset');setTimeout(()=>{const n=document.getElementById('f-name');if(n)n.value='${code}';},120)},100)">+ Create Asset with this Tag</button>`;
+    toast('Unknown barcode: ' + code, 'error');
   }
-  toast('Barcode scanned: ' + code, 'success');
+}
+
+// ── AUDIT MODE ────────────────────────────────────
+function handleAuditScan(code) {
+  const assets = getAssets();
+  const asset = assets.find(a => a.id === code || a.id === code.toUpperCase());
+  const log = window._auditLog || [];
+  // Avoid duplicate scans
+  if (log.find(l => l.code === code)) { toast('Already scanned: ' + code, 'error'); return; }
+  const entry = { code, time: new Date().toLocaleTimeString(), asset: asset || null, found: !!asset };
+  log.push(entry);
+  window._auditLog = log;
+  // Update badge
+  const badge = document.getElementById('auditBadge');
+  if (badge) badge.textContent = log.length + ' scanned';
+  const sc = document.getElementById('scanCount');
+  if (sc) sc.textContent = log.length + ' scanned';
+  // Update summary
+  const found = log.filter(l => l.found).length;
+  const unknown = log.filter(l => !l.found).length;
+  const totalAssets = assets.length;
+  const missing = totalAssets - found;
+  const auditFound = document.getElementById('auditFound');
+  const auditMissing = document.getElementById('auditMissing');
+  const auditUnknown = document.getElementById('auditUnknown');
+  if (auditFound) auditFound.textContent = found;
+  if (auditMissing) auditMissing.textContent = Math.max(0, missing);
+  if (auditUnknown) auditUnknown.textContent = unknown;
+  // Add to list
+  const list = document.getElementById('auditList');
+  if (list) {
+    const item = document.createElement('div');
+    item.className = 'audit-item';
+    item.innerHTML = `
+      <div style="width:22px;height:22px;border-radius:50%;background:${asset?'rgba(16,185,129,.2)':'rgba(239,68,68,.2)'};color:${asset?'var(--accent3)':'var(--danger)'};display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">${asset?'✓':'?'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${asset ? asset.name : code}</div>
+        <div style="font-size:11px;color:var(--muted)">${asset ? asset.id + ' · ' + asset.location : 'Unknown barcode'} · ${entry.time}</div>
+      </div>`;
+    list.insertBefore(item, list.firstChild);
+  }
+  toast(asset ? '✅ ' + asset.name : '❓ Unknown: ' + code, asset ? 'success' : 'error');
+  if (asset) addActivity('create', '📋', `<b>Audit scan:</b> ${asset.name} verified`);
+}
+
+function clearAuditLog() {
+  window._auditLog = [];
+  const list = document.getElementById('auditList');
+  if (list) list.innerHTML = '';
+  ['auditFound','auditMissing','auditUnknown'].forEach(id => { const el = document.getElementById(id); if(el) el.textContent = '0'; });
+  const badge = document.getElementById('auditBadge');
+  if (badge) badge.textContent = '0 scanned';
+  toast('Audit log cleared', 'info');
+}
+
+function exportAuditLog() {
+  const log = window._auditLog || [];
+  if (!log.length) { toast('No audit entries to export', 'error'); return; }
+  const rows = [['Code','Asset Name','Asset ID','Location','Status','Time','Found']];
+  log.forEach(l => {
+    rows.push([l.code, l.asset?.name||'Unknown', l.asset?.id||'', l.asset?.location||'', l.asset?.status||'', l.time, l.found?'Yes':'No']);
+  });
+  const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'audit-' + new Date().toISOString().split('T')[0] + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+  toast('Audit log exported!', 'success');
+}
+
+// ── UPDATE MODE ───────────────────────────────────
+function handleUpdateScan(code) {
+  clearInterval(scanInterval); scanInterval = null;
+  const assets = getAssets();
+  const asset = assets.find(a => a.id === code || a.id === code.toUpperCase());
+  const panel = document.getElementById('updatePanel');
+  const infoEl = document.getElementById('updateAssetInfo');
+  window._updateAssetId = asset ? asset.id : null;
+  if (panel) panel.style.display = 'block';
+  if (asset) {
+    setScanMsg('✅ Asset found — update below', 'var(--accent3)');
+    if (infoEl) infoEl.innerHTML = `
+      <div style="background:rgba(0,229,255,0.06);border:1px solid rgba(0,229,255,0.15);border-radius:10px;padding:12px 14px;">
+        <div style="font-weight:600;margin-bottom:4px">${asset.name}</div>
+        <div style="font-size:12px;color:var(--muted)">🏷️ ${asset.id} · 📍 ${asset.location}</div>
+      </div>`;
+    const statusEl = document.getElementById('updateStatus');
+    const locEl = document.getElementById('updateLocation');
+    if (statusEl) statusEl.value = asset.status;
+    if (locEl) locEl.value = asset.location;
+    toast('Ready to update: ' + asset.name, 'success');
+  } else {
+    setScanMsg('⚠️ Unknown barcode', 'var(--warn)');
+    if (infoEl) infoEl.innerHTML = `<div style="color:var(--warn);font-size:13px;padding:10px">⚠️ No asset found for code: <b>${code}</b></div>`;
+    toast('Unknown barcode', 'error');
+  }
+}
+
+function saveFieldUpdate() {
+  const id = window._updateAssetId;
+  if (!id) { toast('No asset selected', 'error'); return; }
+  const assets = getAssets();
+  const asset = assets.find(a => a.id === id);
+  if (!asset) return;
+  const newStatus = document.getElementById('updateStatus')?.value;
+  const newLocation = document.getElementById('updateLocation')?.value?.trim();
+  const notes = document.getElementById('updateNotes')?.value?.trim();
+  const changes = [];
+  if (newStatus && newStatus !== asset.status) { changes.push(`status → ${newStatus}`); asset.status = newStatus; }
+  if (newLocation && newLocation !== asset.location) { changes.push(`location → ${newLocation}`); asset.location = newLocation; }
+  if (notes) { asset.notes = (asset.notes ? asset.notes + '\n' : '') + `[Field update ${new Date().toLocaleDateString()}]: ${notes}`; }
+  saveAssets(assets);
+  addActivity('create', '✏️', `<b>Field update:</b> ${asset.name} — ${changes.join(', ') || 'notes added'}`);
+  toast(`${asset.name} updated in field!`, 'success');
+  renderDashboard(); renderAssets();
+  resetScan();
 }
 
 function resetScan() {
-  document.getElementById('scanResult').style.display = 'none';
-  document.getElementById('scanMsg').textContent = 'Scanning… hold steady';
-  document.getElementById('scanDot').style.background = 'var(--accent)';
+  const scanResult = document.getElementById('scanResult');
+  const updatePanel = document.getElementById('updatePanel');
+  if (scanResult) scanResult.style.display = 'none';
+  if (updatePanel) updatePanel.style.display = 'none';
+  window._updateAssetId = null;
+  const mode = window._scanMode || 'quick';
+  setScanMsg(mode === 'audit' ? 'Audit mode — scan each asset' : mode === 'update' ? 'Update mode — scan an asset' : 'Scanning… point at a barcode', 'var(--accent)');
   const video = document.getElementById('scanVideo');
-  if (video && camStream) {
+  if (video && camStream && 'BarcodeDetector' in window) {
     scanInterval = setInterval(async () => {
       const code = await detectBarcode(video);
       if (code) handleScanResult(code);
-    }, 600);
+    }, 500);
   }
 }
 
 function switchCamera() {
   currentFacing = currentFacing === 'environment' ? 'user' : 'environment';
+  torchOn = false;
   startCamera('scanVideo', currentFacing);
 }
 
@@ -1024,7 +1294,6 @@ function switchPhotoCamera() {
 }
 
 function manualBarcodeEntry() {
-  stopCamera();
   const code = prompt('Enter barcode or asset tag ID (e.g. AV-001):');
   if (code && code.trim()) handleScanResult(code.trim().toUpperCase());
 }
