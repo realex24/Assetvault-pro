@@ -985,6 +985,67 @@ const SEED={
   settings:{name:'Jordan Mills',email:'jordan@company.com',role:'Administrator',org:'Acme Corporation',prefix:'AV',cur:'USD'}
 };
 
+/* ════════════════════════════════════════════
+   BUSINESS SEED DATA
+════════════════════════════════════════════ */
+const EMPTY_SEED = {
+  assets:[], checkouts:[], maintenance:[], contracts:[], consumables:[], activity:[],
+  nextId:{asset:1,checkout:1,maint:1,contract:1,inv:1},
+  settings:{name:'',email:'',role:'Administrator',org:'',prefix:'AV',cur:'USD'}
+};
+
+const RESTAURANT_SEED = {
+  assets:[
+    {id:'RS-001',name:'6-Burner Commercial Range',cat:'Kitchen Equipment',sub:'Vulcan',assignedTo:'',loc:'Main Kitchen',status:'available',val:4800,bought:'2022-06-01',notes:'Natural gas, 6 burners + oven',photo:null,warranty:'2025-06-01',dept:'Kitchen'},
+    {id:'RS-002',name:'Walk-in Refrigerator',cat:'Refrigeration',sub:'True Refrigeration',assignedTo:'',loc:'Back of House',status:'available',val:8500,bought:'2021-03-15',notes:'10x12 ft, 35°F',photo:null,warranty:'2026-03-15',dept:'Kitchen'},
+    {id:'RS-003',name:'Hobart Dishwasher HT-200',cat:'Dishwashing',sub:'Hobart',assignedTo:'',loc:'Dish Station',status:'available',val:6200,bought:'2022-01-10',notes:'High-temp commercial unit',photo:null,warranty:'2027-01-10',dept:'Kitchen'},
+    {id:'RS-004',name:'POS Terminal #1 — Host',cat:'POS Systems',sub:'Toast',assignedTo:'Front of House',loc:'Host Stand',status:'available',val:1200,bought:'2023-04-01',notes:'Toast POS, card reader attached',photo:null,warranty:'2026-04-01',dept:'Front of House'},
+    {id:'RS-005',name:'POS Terminal #2 — Bar',cat:'POS Systems',sub:'Toast',assignedTo:'',loc:'Bar',status:'available',val:1200,bought:'2023-04-01',notes:'Bar POS with tip screen',photo:null,warranty:'2026-04-01',dept:'Bar'},
+    {id:'RS-006',name:'Espresso Machine La Marzocco',cat:'Coffee Equipment',sub:'La Marzocco',assignedTo:'',loc:'Bar',status:'available',val:7500,bought:'2023-01-20',notes:'2-group Linea PB',photo:null,warranty:'2028-01-20',dept:'Bar'},
+    {id:'RS-007',name:'Commercial Freezer 48"',cat:'Refrigeration',sub:'True Refrigeration',assignedTo:'',loc:'Back of House',status:'maintenance',val:3200,bought:'2020-09-10',notes:'Compressor servicing',photo:null,warranty:'2023-09-10',dept:'Kitchen'},
+    {id:'RS-008',name:'4-Burner Prep Table',cat:'Kitchen Equipment',sub:'Turbo Air',assignedTo:'',loc:'Prep Kitchen',status:'available',val:2100,bought:'2022-08-05',notes:'Refrigerated prep table',photo:null,warranty:'2025-08-05',dept:'Kitchen'},
+    {id:'RS-009',name:'Dining Table Set #1-10',cat:'Furniture',sub:'Restaurant Furniture Co.',assignedTo:'',loc:'Dining Room',status:'available',val:4000,bought:'2022-05-01',notes:'10 x 4-top tables, walnut finish',photo:null,warranty:null,dept:'Dining Room'},
+    {id:'RS-010',name:'Bar Stools (Set of 12)',cat:'Furniture',sub:'Restaurant Furniture Co.',assignedTo:'',loc:'Bar',status:'available',val:1800,bought:'2022-05-01',notes:'12 counter-height stools, black',photo:null,warranty:null,dept:'Bar'},
+    {id:'RS-011',name:'Surveillance System 8-cam',cat:'Security',sub:'Hikvision',assignedTo:'',loc:'All Areas',status:'available',val:2400,bought:'2023-02-14',notes:'8 x 4K cameras, NVR included',photo:null,warranty:'2026-02-14',dept:'Management'},
+    {id:'RS-012',name:'Sound System Bose',cat:'Audio/Visual',sub:'Bose',assignedTo:'',loc:'Dining Room',status:'available',val:3800,bought:'2023-03-01',notes:'8 ceiling speakers + amp',photo:null,warranty:'2026-03-01',dept:'Dining Room'},
+  ],
+  checkouts:[
+    {id:'CO-001',aId:'RS-004',aName:'POS Terminal #1 — Host',person:'Maria Gonzalez',out:'2026-04-10',due:'2026-04-12',returned:false,retDate:null,notes:'Taking for training'},
+  ],
+  maintenance:[
+    {id:'MT-001',aName:'Commercial Freezer 48"',type:'Compressor Service',date:'2026-04-09',tech:'CoolTech HVAC',pri:'high',done:false,cost:350,notes:'Temp rising above set point'},
+    {id:'MT-002',aName:'6-Burner Commercial Range',type:'Annual Inspection',date:'2026-04-20',tech:'Gas Safe Certified',pri:'medium',done:false,cost:180,notes:'Health & safety compliance'},
+    {id:'MT-003',aName:'Hobart Dishwasher HT-200',type:'Deep Clean & Descale',date:'2026-04-15',tech:'In-House',pri:'low',done:false,cost:0,notes:'Monthly descaling'},
+    {id:'MT-004',aName:'Espresso Machine La Marzocco',type:'Group Head Service',date:'2026-03-25',tech:'La Marzocco Technician',pri:'high',done:true,cost:220,notes:'New group head gaskets fitted'},
+  ],
+  contracts:[
+    {id:'CT-001',name:'Toast POS Monthly License',type:'license',vendor:'Toast Inc.',start:'2026-01-01',expiry:'2026-12-31',cost:2400,seats:5,notes:'3 terminals covered'},
+    {id:'CT-002',name:'Restaurant Insurance',type:'insurance',vendor:'Hiscox',start:'2026-01-01',expiry:'2027-01-01',cost:8400,seats:null,notes:'General liability + contents'},
+    {id:'CT-003',name:'Grease Trap Service Contract',type:'contract',vendor:'CleanTrap Co.',start:'2026-01-01',expiry:'2026-12-31',cost:1200,seats:null,notes:'Quarterly service included'},
+    {id:'CT-004',name:'Music Licensing (BMI)',type:'license',vendor:'BMI',start:'2026-01-01',expiry:'2026-12-31',cost:600,seats:null,notes:'Covers all dining room play'},
+  ],
+  consumables:[
+    {id:'INV-001',name:'Nitrile Gloves (Box)',cat:'Kitchen Safety',qty:12,minQty:5,loc:'Kitchen Storage',unit:'boxes',cost:18},
+    {id:'INV-002',name:'Butane Fuel Canisters',cat:'Kitchen Supplies',qty:24,minQty:10,loc:'Kitchen Storage',unit:'units',cost:3.5},
+    {id:'INV-003',name:'POS Printer Paper Rolls',cat:'POS Supplies',qty:6,minQty:10,loc:'Host Stand Drawer',unit:'rolls',cost:4},
+    {id:'INV-004',name:'Coffee Beans (kg)',cat:'Bar Supplies',qty:8,minQty:5,loc:'Bar Storage',unit:'kg',cost:22},
+    {id:'INV-005',name:'Chemical Sanitizer (Gallon)',cat:'Cleaning',qty:3,minQty:4,loc:'Cleaning Station',unit:'gallons',cost:15},
+    {id:'INV-006',name:'Disposable Takeout Containers',cat:'Packaging',qty:500,minQty:200,loc:'Packaging Station',unit:'units',cost:0.35},
+  ],
+  activity:[
+    {type:'create',ico:'➕',text:'<b>Restaurant setup complete.</b> All equipment and supplies loaded.',time:'just now'},
+    {type:'maintenance',ico:'🔧',text:'<b>Maintenance scheduled:</b> Freezer compressor service',time:'1 hour ago'},
+  ],
+  nextId:{asset:13,checkout:2,maint:5,contract:5,inv:7},
+  settings:{name:'',email:'',role:'Administrator',org:'My Restaurant',prefix:'RS',cur:'USD'}
+};
+
+const BUSINESS_SEEDS = {
+  fresh: EMPTY_SEED,
+  restaurant: RESTAURANT_SEED,
+  generic: null // uses default SEED
+};
+
 function initDB(){
   initCompanies();
   ['assets','checkouts','maintenance','contracts','consumables','activity','nextId'].forEach(k=>{if(db.get(k)===null)db.set(k,SEED[k]);});
@@ -1056,12 +1117,15 @@ function renderCompanySwitcher(){
 
 function switchCompany(id){
   setActiveCoId(id);
-  // Re-init data for new company (seed if empty)
+  const co = getActiveCo();
+  // Load correct seed based on the company's bizType
+  const bizType = co?.bizType || 'generic';
+  const seedData = bizType==='restaurant' ? RESTAURANT_SEED : bizType==='fresh' ? EMPTY_SEED : SEED;
   ['assets','checkouts','maintenance','contracts','consumables','activity','nextId'].forEach(k=>{
-    if(db.get(k)===null) db.set(k, SEED[k]);
+    if(db.get(k)===null) db.set(k, JSON.parse(JSON.stringify(seedData[k])));
   });
   const s = db.get('settings');
-  if(!s) db.set('settings', {...SEED.settings, org: getActiveCo()?.name || SEED.settings.org});
+  if(!s) db.set('settings', {...(seedData.settings||SEED.settings), org: co?.name || SEED.settings.org});
   renderCompanySwitcher();
   loadSettings();
   updateBadges();
@@ -1558,29 +1622,37 @@ function openModal(type,id){
   }
   else if(type==='addCompany'){
     const emojis=CO_EMOJIS; const colors=CO_COLORS;
-    let selEmoji=emojis[0]; let selColor=colors[0];
+    window._selEmoji=emojis[0]; window._selColor=colors[0]; window._selBizType='fresh';
+    const bizTypes=[
+      {id:'fresh',emoji:'✨',label:'Fresh Start',desc:'Start with zero data — add your own assets from scratch'},
+      {id:'restaurant',emoji:'🍽️',label:'Restaurant',desc:'Pre-loaded with kitchen equipment, POS, bar assets & restaurant supplies'},
+      {id:'generic',emoji:'🏢',label:'General Business',desc:'Pre-loaded with standard office & IT equipment demo data'},
+    ];
     box.innerHTML=`<button class="modal-close" onclick="closeModal()">✕</button>
       <div class="modal-title">＋ New Company</div>
-      <div class="modal-sub">Create a new organization with its own isolated asset data.</div>
-      <div class="fg"><label class="fl">Company Name *</label><input class="fc" id="cnName" placeholder="e.g. Acme Corporation"></div>
+      <div class="modal-sub">Create a new organization. Each company has completely separate data.</div>
+      <div class="fg"><label class="fl">Company Name *</label><input class="fc" id="cnName" placeholder="e.g. The Golden Fork Restaurant"></div>
+      <div class="fg"><label class="fl">Business Type — Choose a starting template</label>
+        <div style="display:flex;flex-direction:column;gap:8px;" id="bizPicker">
+          ${bizTypes.map((b,i)=>`
+            <div onclick="selBizType(this,'${b.id}')" id="biz-${b.id}" style="display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:var(--r);border:${i===0?'2px solid var(--c)':'1px solid var(--border)'};background:${i===0?'var(--cs)':'var(--bg3)'};cursor:pointer;transition:all .2s">
+              <span style="font-size:24px;flex-shrink:0">${b.emoji}</span>
+              <div><div style="font-weight:700;font-size:13.5px">${b.label}</div><div style="font-size:12px;color:var(--t2);margin-top:2px">${b.desc}</div></div>
+              <div style="margin-left:auto;width:18px;height:18px;border-radius:50%;border:2px solid ${i===0?'var(--c)':'var(--border)'};background:${i===0?'var(--c)':'transparent'};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;color:#000">${i===0?'✓':''}</div>
+            </div>`).join('')}
+        </div>
+      </div>
       <div class="fg"><label class="fl">Choose Emoji</label>
         <div style="display:flex;flex-wrap:wrap;gap:6px;" id="emojiPicker">
-          ${emojis.map(e=>`<button onclick="selCoEmoji(this,'${e}')" style="width:38px;height:38px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);font-size:18px;cursor:pointer;transition:all .2s" title="${e}">${e}</button>`).join('')}
+          ${emojis.map((e,i)=>`<button onclick="selCoEmoji(this,'${e}')" style="width:38px;height:38px;border-radius:8px;border:${i===0?'2px solid var(--c)':'1px solid var(--border)'};background:${i===0?'var(--cs)':'var(--bg3)'};font-size:18px;cursor:pointer;transition:all .2s">${e}</button>`).join('')}
         </div>
       </div>
       <div class="fg"><label class="fl">Brand Color</label>
         <div style="display:flex;flex-wrap:wrap;gap:8px;" id="colorPicker">
-          ${colors.map(col=>`<div onclick="selCoColor(this,'${col}')" style="width:32px;height:32px;border-radius:50%;background:${col};cursor:pointer;border:2px solid transparent;transition:all .2s" title="${col}"></div>`).join('')}
+          ${colors.map((col,i)=>`<div onclick="selCoColor(this,'${col}')" style="width:32px;height:32px;border-radius:50%;background:${col};cursor:pointer;border:${i===0?'3px solid #fff':'2px solid transparent'};transition:all .2s"></div>`).join('')}
         </div>
       </div>
-      <div class="fg"><label class="fl">Industry</label>
-        <select class="fc" id="cnIndustry"><option>Technology</option><option>Manufacturing</option><option>Healthcare</option><option>Education</option><option>Retail</option><option>Construction</option><option>Logistics</option><option>Finance</option><option>Government</option><option>Non-Profit</option><option>Other</option></select>
-      </div>
-      <div class="fg"><label class="fl">Notes</label><input class="fc" id="cnNotes" placeholder="Optional description…"></div>
-      <button class="fbtn" onclick="submitAddCompany()">Create Company →</button>`;
-    // init first emoji/color as selected
-    document.getElementById('emojiPicker')?.querySelector('button')?.click();
-    document.getElementById('colorPicker')?.querySelector('div')?.click();
+      <button class="fbtn" style="margin-top:8px" onclick="submitAddCompany()">Create Company →</button>`;
   }
   else if(type==='editCompany'){
     const cos=getCompanies(); const co=cos.find(c=>c.id===id); if(!co)return;
@@ -1739,6 +1811,26 @@ function importAssets(inp){const f=inp.files[0];if(!f)return;const r=new FileRea
 // Company emoji/color pickers
 window._selEmoji = CO_EMOJIS[0];
 window._selColor = CO_COLORS[0];
+window._selBizType = 'fresh';
+function selBizType(el, type){
+  window._selBizType = type;
+  // Auto-set emoji for restaurant
+  if(type==='restaurant'){
+    const btn = document.querySelector('#emojiPicker button:nth-child(6)') || document.querySelector('#emojiPicker button');
+    // find fork emoji button and click it if available
+    document.querySelectorAll('#emojiPicker button').forEach(b=>{if(b.textContent==='🎯')selCoEmoji(b,'🎯');});
+  }
+  document.querySelectorAll('#bizPicker > div').forEach(d=>{
+    d.style.border='1px solid var(--border)';
+    d.style.background='var(--bg3)';
+    const dot=d.querySelector('div[style*="margin-left"]');
+    if(dot){dot.style.border='2px solid var(--border)';dot.style.background='transparent';dot.textContent='';}
+  });
+  el.style.border='2px solid var(--c)';
+  el.style.background='var(--cs)';
+  const dot=el.querySelector('div[style*="margin-left"]');
+  if(dot){dot.style.border='2px solid var(--c)';dot.style.background='var(--c)';dot.textContent='✓';}
+}
 function selCoEmoji(btn, emoji){
   window._selEmoji = emoji;
   document.querySelectorAll('#emojiPicker button').forEach(b=>{
@@ -1756,19 +1848,26 @@ function submitAddCompany(){
   if(!name){toast('Company name required','error');return;}
   const cos = getCompanies();
   if(cos.find(c=>c.name.toLowerCase()===name.toLowerCase())){toast('A company with that name already exists','error');return;}
+  const bizType = window._selBizType || 'fresh';
   const id = genCoId();
-  cos.push({id, name, emoji: window._selEmoji||'🏢', color: window._selColor||'#00c6ff', industry: document.getElementById('cnIndustry')?.value||'', notes: document.getElementById('cnNotes')?.value||'', created: new Date().toISOString()});
+  cos.push({id, name, emoji: window._selEmoji||'🏢', color: window._selColor||'#00c6ff', bizType, created: new Date().toISOString()});
   saveCompanies(cos);
-  // Seed the new company's data
+  // Seed new company's data based on business type
   const prev = getActiveCoId();
   setActiveCoId(id);
-  ['assets','checkouts','maintenance','contracts','consumables','activity','nextId'].forEach(k=>db.set(k, SEED[k]));
-  db.set('settings', {...SEED.settings, org: name});
-  setActiveCoId(prev); // stay on current company
+  const seedData = bizType==='restaurant' ? RESTAURANT_SEED : bizType==='generic' ? SEED : EMPTY_SEED;
+  // Re-ID assets with company prefix
+  const prefix = bizType==='restaurant'?'RS': bizType==='generic'?((db.get('settings')||{}).prefix||'AV'):'AV';
+  ['assets','checkouts','maintenance','contracts','consumables','activity','nextId'].forEach(k=>{
+    db.set(k, JSON.parse(JSON.stringify(seedData[k])));
+  });
+  db.set('settings', {...(seedData.settings||{}), org: name, prefix});
+  setActiveCoId(prev); // stay on current company until user explicitly switches
   renderCompanySwitcher();
   updateBadges();
   closeModal();
-  toast(`"${name}" created! Switch to it from the company switcher.`, 'success');
+  const typeLabel = {fresh:'fresh start (empty)',restaurant:'Restaurant template',generic:'General Business template'}[bizType]||bizType;
+  toast(`"${name}" created with ${typeLabel}! Click the company switcher to activate it.`, 'success');
   renderCompaniesPage?.();
   const nb = document.getElementById('nb-cos');
   if(nb) nb.textContent = getCompanies().length;
