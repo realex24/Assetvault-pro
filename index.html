@@ -437,6 +437,23 @@ img{display:block;max-width:100%;}
   .feat-grid,.price-grid{grid-template-columns:1fr;}
   .srch input{width:160px;}
 }
+
+/* ═══ COMPANY SWITCHER ═══ */
+.co-switcher{padding:10px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .2s;min-width:var(--sw);}
+.co-switcher:hover{background:var(--glass);}
+.co-pill{display:flex;align-items:center;gap:9px;}
+.co-emoji{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;background:var(--glass2);border:1px solid var(--border);}
+.co-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;}
+.co-arrow{font-size:10px;color:var(--t3);flex-shrink:0;}
+.sidebar.slim .co-switcher{padding:10px;}
+.sidebar.slim .co-name,.sidebar.slim .co-arrow{display:none;}
+/* company manager modal */
+.co-card{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg3);margin-bottom:8px;cursor:pointer;transition:all .2s;}
+.co-card:hover{border-color:var(--border2);}
+.co-card.active{border-color:rgba(0,198,255,.4);background:var(--cs);}
+.co-card-emoji{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:var(--glass2);}
+.co-card-name{font-weight:700;font-size:14px;}
+.co-card-meta{font-size:11.5px;color:var(--t2);margin-top:2px;}
 </style>
 </head>
 <body>
@@ -623,6 +640,13 @@ img{display:block;max-width:100%;}
       <div><div class="s-logo-text">Asset<span class="gr">Vault</span></div><div class="s-logo-ver">Pro · v3.0</div></div>
       <div class="s-toggle" id="sb-tog" onclick="toggleSB()">◀</div>
     </div>
+    <div class="co-switcher" onclick="openModal('companies')" id="coSwitcher">
+      <div class="co-pill">
+        <div class="co-emoji" id="coEmoji">🏢</div>
+        <div class="co-name" id="coName">Loading…</div>
+        <div class="co-arrow">⌄</div>
+      </div>
+    </div>
     <nav class="s-nav">
       <div class="s-grp">Overview</div>
       <div class="s-item on" onclick="goPage('dashboard',this)"><span class="s-ico">⊞</span><span class="s-lbl">Dashboard</span></div>
@@ -640,6 +664,7 @@ img{display:block;max-width:100%;}
       <div class="s-item" onclick="goPage('ai',this)"><span class="s-ico">🤖</span><span class="s-lbl">AI Insights</span><span class="s-badge g" id="nb-ai">0</span></div>
 
       <div class="s-grp">Admin</div>
+      <div class="s-item" onclick="goPage('companies-page',this)"><span class="s-ico">🏢</span><span class="s-lbl">Companies</span><span class="s-badge" id="nb-cos">1</span></div>
       <div class="s-item" onclick="goPage('settings',this)"><span class="s-ico">⚙️</span><span class="s-lbl">Settings</span></div>
     </nav>
     <div class="s-footer">
@@ -800,6 +825,25 @@ img{display:block;max-width:100%;}
         </div>
       </div>
 
+
+      <!-- ═══ COMPANIES PAGE ═══ -->
+      <div id="page-companies-page" class="page">
+        <div class="stats-row" id="coPageStats"></div>
+        <div class="g2">
+          <div class="card">
+            <div class="card-hd">
+              <div class="card-title">🏢 All Companies</div>
+              <button class="btn sm ac" onclick="openModal('addCompany')">＋ New Company</button>
+            </div>
+            <div class="card-bd" id="coPageList"></div>
+          </div>
+          <div class="card">
+            <div class="card-hd"><div class="card-title">📊 Active Company Details</div></div>
+            <div class="card-bd" id="coPageDetail"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- ═══ SETTINGS ═══ -->
       <div id="page-settings" class="page">
         <div class="g2">
@@ -854,11 +898,38 @@ img{display:block;max-width:100%;}
 /* ════════════════════════════════════════════
    DB
 ════════════════════════════════════════════ */
-const K='avp3_';
+/* ════════════════════════════════════════════
+   COMPANY / TENANT SYSTEM
+════════════════════════════════════════════ */
+const COMPANIES_KEY='avp3_companies';
+const ACTIVE_CO_KEY='avp3_activeCompany';
+
+function getCompanies(){try{return JSON.parse(localStorage.getItem(COMPANIES_KEY))||[];}catch{return[];}}
+function saveCompanies(c){localStorage.setItem(COMPANIES_KEY,JSON.stringify(c));}
+function getActiveCoId(){return localStorage.getItem(ACTIVE_CO_KEY)||null;}
+function setActiveCoId(id){localStorage.setItem(ACTIVE_CO_KEY,id);}
+function getActiveCo(){const id=getActiveCoId();return getCompanies().find(c=>c.id===id)||null;}
+
+function genCoId(){return 'co_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);}
+
+function initCompanies(){
+  let cos=getCompanies();
+  if(!cos.length){
+    const id=genCoId();
+    cos=[{id,name:'Acme Corporation',color:'#00c6ff',emoji:'🏢',created:new Date().toISOString()}];
+    saveCompanies(cos);
+    setActiveCoId(id);
+  }
+  if(!getActiveCoId()&&cos.length) setActiveCoId(cos[0].id);
+}
+
+/* Company-scoped DB — all data namespaced per company */
+function coKey(){return 'avp3_co_'+(getActiveCoId()||'default')+'_';}
+const K=()=>coKey();
 const db={
-  get(k){try{return JSON.parse(localStorage.getItem(K+k));}catch{return null;}},
-  set(k,v){localStorage.setItem(K+k,JSON.stringify(v));},
-  del(k){localStorage.removeItem(K+k);}
+  get(k){try{return JSON.parse(localStorage.getItem(K()+k));}catch{return null;}},
+  set(k,v){localStorage.setItem(K()+k,JSON.stringify(v));},
+  del(k){localStorage.removeItem(K()+k);}
 };
 const SEED={
   assets:[
@@ -915,9 +986,10 @@ const SEED={
 };
 
 function initDB(){
+  initCompanies();
   ['assets','checkouts','maintenance','contracts','consumables','activity','nextId'].forEach(k=>{if(db.get(k)===null)db.set(k,SEED[k]);});
-  const s=db.get('settings');if(!s)db.set('settings',SEED.settings);
-  loadSettings();updateBadges();
+  const s=db.get('settings');if(!s)db.set('settings',{...SEED.settings,org:getActiveCo()?.name||SEED.settings.org});
+  loadSettings();updateBadges();renderCompanySwitcher();
 }
 const GA=()=>db.get('assets')||[];
 const GC=()=>db.get('checkouts')||[];
@@ -953,18 +1025,122 @@ function setPriceTab(t,el){document.querySelectorAll('.ptab').forEach(b=>b.class
 function launch(){document.getElementById('landing').classList.add('hide');document.getElementById('app').classList.add('show');renderDashboard();updateBadges();}
 let sbCollapsed=false;
 function toggleSB(){sbCollapsed=!sbCollapsed;const sb=document.getElementById('sb');const tog=document.getElementById('sb-tog');sb.classList.toggle('slim',sbCollapsed);tog.textContent=sbCollapsed?'▶':'◀';}
-const TITLES={dashboard:'Dashboard',assets:'Asset Registry',checkout:'Check-in / Check-out',maintenance:'Maintenance',contracts:'Contracts & Licenses',inventory:'Consumables Inventory',scanner:'Scanner',reports:'Reports',ai:'AI Insights',settings:'Settings'};
+const TITLES={dashboard:'Dashboard','companies-page':'Companies',assets:'Asset Registry',checkout:'Check-in / Check-out',maintenance:'Maintenance',contracts:'Contracts & Licenses',inventory:'Consumables Inventory',scanner:'Scanner',reports:'Reports',ai:'AI Insights',settings:'Settings'};
 function goPage(id,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
   const pg=document.getElementById('page-'+id);if(pg)pg.classList.add('on');
   document.querySelectorAll('.s-item').forEach(n=>n.classList.remove('on'));
   if(el)el.classList.add('on');else document.querySelectorAll('.s-item').forEach(n=>{if(n.getAttribute('onclick')?.includes(`'${id}'`))n.classList.add('on');});
   document.getElementById('pgTitle').textContent=TITLES[id]||id;
-  const map={assets:renderAssets,checkout:renderCheckout,maintenance:renderMaintenance,contracts:renderContracts,inventory:renderInventory,scanner:initScanner,reports:()=>{},ai:renderAI,settings:loadSettings};
+  const map={assets:renderAssets,'companies-page':renderCompaniesPage,checkout:renderCheckout,maintenance:renderMaintenance,contracts:renderContracts,inventory:renderInventory,scanner:initScanner,reports:()=>{},ai:renderAI,settings:loadSettings};
   map[id]?.();
 }
 function globalSearch(v){if(v.length>1){sfVal=v.toLowerCase();goPage('assets',null);}else if(!v){sfVal='';renderAssetTable();}}
 
+
+/* ════════════════════════════════════════════
+   COMPANY MANAGEMENT
+════════════════════════════════════════════ */
+const CO_EMOJIS = ['🏢','🏭','🏗','🏬','🏪','🏦','🏥','🎓','🚀','⚡','🔥','💎','🌍','🎯','🛡️','🔑'];
+const CO_COLORS = ['#00c6ff','#7b4fff','#00e676','#ff9800','#f44336','#e91e63','#9c27b0','#3f51b5','#009688','#ff5722'];
+
+function renderCompanySwitcher(){
+  const co = getActiveCo();
+  const el = document.getElementById('coEmoji');
+  const nl = document.getElementById('coName');
+  const nb = document.getElementById('nb-cos');
+  if(el) el.textContent = co?.emoji || '🏢';
+  if(nl) nl.textContent = co?.name || 'Select Company';
+  if(nb) nb.textContent = getCompanies().length;
+}
+
+function switchCompany(id){
+  setActiveCoId(id);
+  // Re-init data for new company (seed if empty)
+  ['assets','checkouts','maintenance','contracts','consumables','activity','nextId'].forEach(k=>{
+    if(db.get(k)===null) db.set(k, SEED[k]);
+  });
+  const s = db.get('settings');
+  if(!s) db.set('settings', {...SEED.settings, org: getActiveCo()?.name || SEED.settings.org});
+  renderCompanySwitcher();
+  loadSettings();
+  updateBadges();
+  renderDashboard();
+  goPage('dashboard', null);
+  document.querySelectorAll('.s-item').forEach(n => n.classList.remove('on'));
+  document.querySelector('.s-item[onclick*="dashboard"]')?.classList.add('on');
+  closeModal();
+  toast('Switched to ' + getActiveCo()?.name, 'success');
+}
+
+function renderCompaniesPage(){
+  const cos = getCompanies();
+  const activeId = getActiveCoId();
+
+  // Stats
+  document.getElementById('coPageStats').innerHTML = `
+    <div class="stat"><div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--cg);border-radius:inherit"></div><div class="stat-top"><div class="stat-icon" style="background:var(--cs)">🏢</div></div><div class="stat-val">${cos.length}</div><div class="stat-label">Total Companies</div></div>
+    <div class="stat"><div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--c3);border-radius:inherit"></div><div class="stat-top"><div class="stat-icon" style="background:var(--cs3)">📦</div></div><div class="stat-val">${GA().length}</div><div class="stat-label">Assets (Active Co.)</div></div>
+    <div class="stat"><div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--c4);border-radius:inherit"></div><div class="stat-top"><div class="stat-icon" style="background:var(--cs4)">🔄</div></div><div class="stat-val">${GC().filter(c=>!c.returned).length}</div><div class="stat-label">Checked Out (Active)</div></div>
+    <div class="stat"><div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--c2);border-radius:inherit"></div><div class="stat-top"><div class="stat-icon" style="background:var(--cs2)">💰</div></div><div class="stat-val">${fmtCur(GA().reduce((s,a)=>s+(a.val||0),0))}</div><div class="stat-label">Fleet Value (Active)</div></div>`;
+
+  // Company list
+  const listEl = document.getElementById('coPageList');
+  listEl.innerHTML = cos.map(co => `
+    <div class="co-card ${co.id===activeId?'active':''}" onclick="switchCompany('${co.id}')">
+      <div class="co-card-emoji" style="background:${co.color}22;border:1px solid ${co.color}44">${co.emoji}</div>
+      <div style="flex:1;min-width:0">
+        <div class="co-card-name">${co.name}</div>
+        <div class="co-card-meta">${co.id===activeId?'● Currently active':'Click to switch'}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        ${co.id===activeId?'<span style="font-size:11px;color:var(--c);font-weight:700;background:var(--cs);padding:3px 10px;border-radius:20px">Active</span>':''}
+        <button class="btn xs" onclick="event.stopPropagation();openModal('editCompany','${co.id}')">✏️</button>
+        ${cos.length>1?`<button class="btn xs danger" onclick="event.stopPropagation();deleteCompany('${co.id}')">🗑</button>`:''}
+      </div>
+    </div>`).join('');
+
+  // Active company detail
+  const co = getActiveCo();
+  const A = GA(); const C = GC(); const M = GM();
+  document.getElementById('coPageDetail').innerHTML = co ? `
+    <div style="text-align:center;padding:16px 0 20px">
+      <div style="width:64px;height:64px;border-radius:16px;background:${co.color}22;border:2px solid ${co.color}44;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 12px">${co.emoji}</div>
+      <div style="font-size:20px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px">${co.name}</div>
+      <div style="font-size:12px;color:var(--t3)">Created ${new Date(co.created).toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      ${[
+        ['📦','Assets',A.length],
+        ['✅','Available',A.filter(a=>a.status==='available').length],
+        ['🔄','Checked Out',C.filter(c=>!c.returned).length],
+        ['🔧','Maintenance',M.filter(m=>!m.done).length],
+        ['💰','Fleet Value',fmtCur(A.reduce((s,a)=>s+(a.val||0),0))],
+        ['📜','Contracts',GCT().length],
+      ].map(([ico,lbl,val])=>`<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;text-align:center"><div style="font-size:18px;margin-bottom:4px">${ico}</div><div style="font-size:16px;font-weight:800">${val}</div><div style="font-size:11px;color:var(--t3)">${lbl}</div></div>`).join('')
+      }
+    </div>
+    <button class="fbtn" onclick="openModal('editCompany','${co.id}')">✏️ Edit Company</button>
+  ` : '<div class="empty"><div class="empty-sub">No active company</div></div>';
+}
+
+function deleteCompany(id){
+  const cos = getCompanies();
+  const co = cos.find(c=>c.id===id);
+  if(!co) return;
+  if(!confirm(`Delete "${co.name}" and ALL its data permanently? This cannot be undone.`)) return;
+  // Delete all data for this company
+  const prefix = 'avp3_co_'+id+'_';
+  Object.keys(localStorage).filter(k=>k.startsWith(prefix)).forEach(k=>localStorage.removeItem(k));
+  const newCos = cos.filter(c=>c.id!==id);
+  saveCompanies(newCos);
+  if(getActiveCoId()===id) setActiveCoId(newCos[0]?.id||null);
+  initDB();
+  renderCompaniesPage();
+  renderCompanySwitcher();
+  toast(`"${co.name}" deleted`,'error');
+}
+/* ═══════════════════════════════════════════════ */
 /* ════════════════════════════════════════════
    BADGES
 ════════════════════════════════════════════ */
@@ -1365,7 +1541,68 @@ function openModal(type,id){
   const box=document.getElementById('mb');
   const A=GA();
 
-  if(type==='alerts'){
+  if(type==='companies'){
+    const cos=getCompanies(); const activeId=getActiveCoId();
+    box.innerHTML=`<button class="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-title">🏢 Switch Company</div>
+      <div class="modal-sub">Select a company to manage its assets.</div>
+      <div id="coModalList">${cos.map(co=>`
+        <div class="co-card ${co.id===activeId?'active':''}" onclick="switchCompany('${co.id}')">
+          <div class="co-card-emoji" style="background:${co.color}22;border:1px solid ${co.color}44">${co.emoji}</div>
+          <div style="flex:1;min-width:0"><div class="co-card-name">${co.name}</div><div class="co-card-meta">${co.id===activeId?'● Currently active':'Click to switch'}</div></div>
+          ${co.id===activeId?'<span style="font-size:11px;color:var(--c);font-weight:700;background:var(--cs);padding:3px 10px;border-radius:20px">Active</span>':''}
+        </div>`).join('')}
+      </div>
+      <div style="height:1px;background:var(--border);margin:16px 0"></div>
+      <button class="fbtn" onclick="closeModal();openModal('addCompany')">＋ Add New Company</button>`;
+  }
+  else if(type==='addCompany'){
+    const emojis=CO_EMOJIS; const colors=CO_COLORS;
+    let selEmoji=emojis[0]; let selColor=colors[0];
+    box.innerHTML=`<button class="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-title">＋ New Company</div>
+      <div class="modal-sub">Create a new organization with its own isolated asset data.</div>
+      <div class="fg"><label class="fl">Company Name *</label><input class="fc" id="cnName" placeholder="e.g. Acme Corporation"></div>
+      <div class="fg"><label class="fl">Choose Emoji</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;" id="emojiPicker">
+          ${emojis.map(e=>`<button onclick="selCoEmoji(this,'${e}')" style="width:38px;height:38px;border-radius:8px;border:1px solid var(--border);background:var(--bg3);font-size:18px;cursor:pointer;transition:all .2s" title="${e}">${e}</button>`).join('')}
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Brand Color</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;" id="colorPicker">
+          ${colors.map(col=>`<div onclick="selCoColor(this,'${col}')" style="width:32px;height:32px;border-radius:50%;background:${col};cursor:pointer;border:2px solid transparent;transition:all .2s" title="${col}"></div>`).join('')}
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Industry</label>
+        <select class="fc" id="cnIndustry"><option>Technology</option><option>Manufacturing</option><option>Healthcare</option><option>Education</option><option>Retail</option><option>Construction</option><option>Logistics</option><option>Finance</option><option>Government</option><option>Non-Profit</option><option>Other</option></select>
+      </div>
+      <div class="fg"><label class="fl">Notes</label><input class="fc" id="cnNotes" placeholder="Optional description…"></div>
+      <button class="fbtn" onclick="submitAddCompany()">Create Company →</button>`;
+    // init first emoji/color as selected
+    document.getElementById('emojiPicker')?.querySelector('button')?.click();
+    document.getElementById('colorPicker')?.querySelector('div')?.click();
+  }
+  else if(type==='editCompany'){
+    const cos=getCompanies(); const co=cos.find(c=>c.id===id); if(!co)return;
+    const emojis=CO_EMOJIS; const colors=CO_COLORS;
+    box.innerHTML=`<button class="modal-close" onclick="closeModal()">✕</button>
+      <div class="modal-title">✏️ Edit Company</div>
+      <div class="modal-sub">${co.name}</div>
+      <div class="fg"><label class="fl">Company Name</label><input class="fc" id="cnName" value="${co.name}"></div>
+      <div class="fg"><label class="fl">Emoji</label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;" id="emojiPicker">
+          ${emojis.map(e=>`<button onclick="selCoEmoji(this,'${e}')" style="width:38px;height:38px;border-radius:8px;border:${co.emoji===e?'2px solid var(--c)':'1px solid var(--border)'};background:${co.emoji===e?'var(--cs)':'var(--bg3)'};font-size:18px;cursor:pointer;transition:all .2s">${e}</button>`).join('')}
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Color</label>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;" id="colorPicker">
+          ${colors.map(col=>`<div onclick="selCoColor(this,'${col}')" style="width:32px;height:32px;border-radius:50%;background:${col};cursor:pointer;border:${co.color===col?'3px solid #fff':'2px solid transparent'};transition:all .2s"></div>`).join('')}
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Notes</label><input class="fc" id="cnNotes" value="${co.notes||''}"></div>
+      <button class="fbtn" onclick="submitEditCompany('${id}')">Save Changes →</button>`;
+  }
+  else if(type==='alerts'){
     const C=GC();const M=GM();const CT=GCT();
     const od=C.filter(c=>!c.returned&&isOD(c.due));const mo=M.filter(m=>!m.done&&isOD(m.date));const ce=CT.filter(ct=>{const d=daysLeft(ct.expiry);return d!==null&&d<=30;});
     box.innerHTML=`<button class="modal-close" onclick="closeModal()">✕</button><div class="modal-title">🔔 Alerts</div><div class="modal-sub">${od.length+mo.length+ce.length} item${od.length+mo.length+ce.length!==1?'s':''} need attention.</div>${od.map(c=>`<div class="ins-card" style="border-color:rgba(255,152,0,.2)"><div class="ins-ico warn">⚠️</div><div style="flex:1"><div class="ins-head">${c.aName} — Overdue</div><div class="ins-body">${c.person} · Due ${fmtD(c.due)}</div></div><button class="btn sm green" onclick="returnAsset('${c.id}');closeModal()">Return</button></div>`).join('')}${mo.map(m=>`<div class="ins-card" style="border-color:rgba(244,67,54,.2)"><div class="ins-ico danger">🔧</div><div><div class="ins-head">${m.aName} — Maintenance Overdue</div><div class="ins-body">${m.type} · Due ${fmtD(m.date)}</div></div></div>`).join('')}${ce.map(ct=>{const d=daysLeft(ct.expiry);return`<div class="ins-card" style="border-color:rgba(255,152,0,.2)"><div class="ins-ico warn">📜</div><div><div class="ins-head">${ct.name} — Expiring</div><div class="ins-body">${ct.vendor} · ${d}d left · ${fmtD(ct.expiry)}</div></div></div>`;}).join('')}${od.length+mo.length+ce.length===0?'<div class="empty"><div class="empty-ico">🎉</div><div class="empty-title">All Clear!</div><div class="empty-sub">No active alerts.</div></div>':''}`;
@@ -1499,6 +1736,59 @@ function removePhoto(id){const A=GA();const a=A.find(x=>x.id===id);if(!a)return;
 // Import assets CSV/JSON
 function importAssets(inp){const f=inp.files[0];if(!f)return;const r=new FileReader();r.onload=e=>{if(f.name.endsWith('.json')){try{const d=JSON.parse(e.target.result);if(Array.isArray(d)){const A=GA();d.forEach(item=>{const a={id:genId('asset'),name:item.Name||item.name||'Unnamed',cat:item.Category||item.cat||'Other',sub:item.Manufacturer||item.sub||'',status:'available',val:parseInt(item.Value||item.val||0)||0,loc:item.Location||item.loc||'',notes:item.Notes||item.notes||'',bought:'',photo:null};A.push(a);});SA(A);renderAssets();toast(`${d.length} assets imported!`,'success');}}catch{toast('Invalid JSON','error');}closeModal();}};r.readAsText(f);inp.value='';}
 
+// Company emoji/color pickers
+window._selEmoji = CO_EMOJIS[0];
+window._selColor = CO_COLORS[0];
+function selCoEmoji(btn, emoji){
+  window._selEmoji = emoji;
+  document.querySelectorAll('#emojiPicker button').forEach(b=>{
+    b.style.border='1px solid var(--border)';b.style.background='var(--bg3)';
+  });
+  btn.style.border='2px solid var(--c)';btn.style.background='var(--cs)';
+}
+function selCoColor(div, color){
+  window._selColor = color;
+  document.querySelectorAll('#colorPicker div').forEach(d=>d.style.border='2px solid transparent');
+  div.style.border='3px solid #fff';
+}
+function submitAddCompany(){
+  const name = document.getElementById('cnName')?.value?.trim();
+  if(!name){toast('Company name required','error');return;}
+  const cos = getCompanies();
+  if(cos.find(c=>c.name.toLowerCase()===name.toLowerCase())){toast('A company with that name already exists','error');return;}
+  const id = genCoId();
+  cos.push({id, name, emoji: window._selEmoji||'🏢', color: window._selColor||'#00c6ff', industry: document.getElementById('cnIndustry')?.value||'', notes: document.getElementById('cnNotes')?.value||'', created: new Date().toISOString()});
+  saveCompanies(cos);
+  // Seed the new company's data
+  const prev = getActiveCoId();
+  setActiveCoId(id);
+  ['assets','checkouts','maintenance','contracts','consumables','activity','nextId'].forEach(k=>db.set(k, SEED[k]));
+  db.set('settings', {...SEED.settings, org: name});
+  setActiveCoId(prev); // stay on current company
+  renderCompanySwitcher();
+  updateBadges();
+  closeModal();
+  toast(`"${name}" created! Switch to it from the company switcher.`, 'success');
+  renderCompaniesPage?.();
+  const nb = document.getElementById('nb-cos');
+  if(nb) nb.textContent = getCompanies().length;
+}
+function submitEditCompany(id){
+  const cos = getCompanies();
+  const co = cos.find(c=>c.id===id);
+  if(!co)return;
+  const name = document.getElementById('cnName')?.value?.trim();
+  if(!name){toast('Name required','error');return;}
+  co.name = name;
+  co.emoji = window._selEmoji || co.emoji;
+  co.color = window._selColor || co.color;
+  co.notes = document.getElementById('cnNotes')?.value||'';
+  saveCompanies(cos);
+  renderCompanySwitcher();
+  closeModal();
+  renderCompaniesPage?.();
+  toast(`"${name}" updated!`,'success');
+}
 function closeModal(){stopCam();document.getElementById('ov').classList.remove('open');}
 function closeOvOut(e){if(e.target===document.getElementById('ov'))closeModal();}
 
